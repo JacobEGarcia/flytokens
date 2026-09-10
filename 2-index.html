@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>flytokens — neural observatory</title>
+<style>
+  :root{
+    --bg:#060708; --panel:#090b0d; --card:#0d0f12; --line:#1b1e23; --line2:#24282e;
+    --text:#e9eaeb; --dim:#9aa0a6; --faint:#5b6167;
+    --orange:#f0a35c; --orange2:#ffb066; --cyan:#57b6ff; --green:#3ecf6f;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text); overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{height:46px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px; border-bottom:1px solid var(--line); background:var(--panel)}
+  .brand{display:flex; align-items:center; gap:14px}
+  .brand .ast{color:var(--dim); font-size:17px; line-height:1}
+  .brand .name{font-weight:700; font-size:15px; letter-spacing:.01em}
+  .brand .tag{font-size:10px; letter-spacing:.32em; color:var(--faint); font-weight:600}
+  .conn{display:flex; align-items:center; gap:12px; font-size:11px; color:var(--dim)}
+  .conn .dot{color:var(--green); font-size:9px; margin-right:5px}
+  .chip{border:1px solid var(--line2); border-radius:6px; padding:3px 8px; font-size:10.5px;
+    color:var(--dim); background:var(--card); font-family:ui-monospace,"SF Mono",Menlo,monospace}
+  main{display:flex; height:calc(100vh - 46px)}
+  #left{width:468px; min-width:468px; height:100%; overflow-y:auto; background:var(--panel);
+    border-right:1px solid var(--line); padding:26px 30px 20px}
+  #left::-webkit-scrollbar{width:8px}
+  #left::-webkit-scrollbar-thumb{background:#1e2226;border-radius:4px}
+  .kicker{font-size:10px; letter-spacing:.28em; color:var(--faint); font-weight:600; margin-bottom:14px}
+  h1{font-size:31px; font-weight:600; letter-spacing:-.015em; line-height:1.16; margin-bottom:10px}
+  .sub{font-size:12.5px; color:var(--dim); margin-bottom:22px}
+  label.f{display:block; font-size:11px; color:var(--dim); margin:0 0 7px 1px}
+  textarea{width:100%; height:74px; resize:none; background:var(--card); color:var(--text);
+    border:1px solid var(--line2); border-radius:9px; padding:10px 12px; font-size:13px;
+    font-family:inherit; outline:none; transition:border-color .15s}
+  textarea:focus{border-color:var(--orange)}
+  .rowline{display:flex; align-items:center; justify-content:space-between; margin:18px 0 8px}
+  .rowline .lab{font-size:11px; color:var(--dim)}
+  .tokbox{display:flex; align-items:center; gap:8px}
+  .tokbox input{width:46px; background:var(--card); border:1px solid var(--line2); color:var(--text);
+    border-radius:6px; padding:4px 6px; font-size:12px; text-align:center; outline:none;
+    font-family:ui-monospace,Menlo,monospace}
+  .tokbox span{font-size:10.5px; color:var(--faint)}
+  input[type=range]{-webkit-appearance:none; width:100%; height:3px; border-radius:2px;
+    background:linear-gradient(to right,var(--orange) 0%,var(--orange) var(--p,30%),#22262b var(--p,30%)); outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+    background:#e8e9ea; border:1px solid #0a0a0a; cursor:pointer; box-shadow:0 0 0 3px rgba(255,255,255,.06)}
+  .caprow{display:flex; justify-content:space-between; font-size:9.5px; color:var(--faint); margin-top:6px}
+  details{margin:16px 0 4px; font-size:12px; color:var(--dim)}
+  details summary{cursor:pointer; user-select:none; list-style:none; font-size:11.5px}
+  details summary::before{content:"\25B8"; display:inline-block; margin-right:7px; color:var(--faint); transition:transform .15s}
+  details[open] summary::before{transform:rotate(90deg)}
+  .sampling{padding:12px 2px 2px}
+  .sampling .srow{margin-bottom:12px}
+  .sampling .srow .rowline{margin:0 0 6px}
+  .btnrow{display:flex; gap:9px; margin:16px 0 22px}
+  #startBtn{flex:1; background:var(--orange); color:#0c0700; border:none; border-radius:9px;
+    font-size:13px; font-weight:600; padding:11px 14px; cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between}
+  #startBtn:hover{background:var(--orange2)}
+  #startBtn:disabled{background:#8a6a48; color:#241a10; cursor:default}
+  #startBtn .arr{font-weight:400; font-size:14px}
+  .darkbtn{background:var(--card); border:1px solid var(--line2); color:var(--dim); border-radius:9px;
+    font-size:12px; padding:11px 16px; cursor:pointer}
+  .darkbtn:hover{color:var(--text); border-color:#33383f}
+  .darkbtn.active{color:var(--orange); border-color:var(--orange)}
+  .outhead{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px}
+  .outhead .lab{font-size:10px; letter-spacing:.24em; color:var(--faint); font-weight:600}
+  #status{font-size:11px; color:var(--faint)}
+  #status.gen,#status.pause{color:var(--orange)}
+  #output{min-height:170px; max-height:300px; overflow-y:auto; white-space:pre-wrap;
+    font-size:13.5px; line-height:1.78; color:#c7cacc; padding-right:6px}
+  #output::-webkit-scrollbar{width:8px}
+  #output::-webkit-scrollbar-thumb{background:#1e2226;border-radius:4px}
+  #output .cursor{display:inline-block; width:8px; height:15px; background:var(--orange);
+    vertical-align:-2px; margin-left:1px; animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .stats{display:flex; gap:44px; margin:16px 0 4px; padding-top:14px; border-top:1px solid var(--line)}
+  .stat .n{font-size:23px; font-weight:600; letter-spacing:-.01em}
+  .stat .l{font-size:9px; letter-spacing:.16em; color:var(--faint); margin-top:3px; text-transform:uppercase}
+  .probwrap{margin-top:16px}
+  #chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; min-height:26px}
+  .pchip{background:var(--card); border:1px solid var(--line2); border-radius:6px; padding:4px 9px;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px}
+  .pchip .t{color:var(--text)} .pchip .p{color:var(--orange); margin-left:7px}
+  #right{flex:1; display:flex; flex-direction:column; min-width:0; background:var(--bg)}
+  .rhead{display:flex; align-items:flex-end; justify-content:space-between; padding:24px 30px 14px}
+  .rhead h2{font-size:19px; font-weight:600; letter-spacing:-.01em; margin-top:12px}
+  #tokflag{font-size:10.5px; color:var(--dim); letter-spacing:.14em; font-family:ui-monospace,Menlo,monospace}
+  #tokflag .dot{color:var(--green); margin-right:6px}
+  .rtools{display:flex; align-items:center; justify-content:space-between; padding:0 30px 12px}
+  .seg{display:flex; border:1px solid var(--line2); border-radius:8px; overflow:hidden}
+  .seg button{background:transparent; border:none; color:var(--dim); font-size:11.5px; padding:6px 14px; cursor:pointer}
+  .seg button.on{background:#1b2126; color:var(--text)}
+  .rbtns{display:flex; gap:8px}
+  .rbtns button{background:var(--card); border:1px solid var(--line2); color:var(--dim); font-size:11px;
+    border-radius:7px; padding:6px 12px; cursor:pointer}
+  .rbtns button:hover{color:var(--text)}
+  .rbtns button.on{color:var(--orange); border-color:#5a4326}
+  #stage{position:relative; flex:1; margin:0 30px; border:1px solid var(--line); border-radius:12px; overflow:hidden; min-height:0}
+  #scene{position:absolute; inset:0}
+  .stagefoot{position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between;
+    padding:12px 16px; font-size:9px; letter-spacing:.18em; color:var(--faint); pointer-events:none}
+  .rfoot{display:flex; align-items:center; justify-content:space-between; padding:12px 30px 16px; gap:20px}
+  .scalebar{display:flex; align-items:center; gap:10px; font-size:10.5px; color:var(--dim)}
+  .scalebar .bar{width:130px; height:5px; border-radius:3px;
+    background:linear-gradient(to right,#2f6db3,#0c0f13 50%,#ff8c2e)}
+  .scalebar .nm{font-size:10px; color:var(--faint)}
+  #coord{font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--dim); letter-spacing:.06em}
+  .bright{display:flex; align-items:center; gap:10px; font-size:10.5px; color:var(--dim); width:220px}
+  .bright input{flex:1}
+  #loading{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:10px; background:var(--bg); z-index:5}
+  #loading .t{font-size:12px; color:var(--dim); letter-spacing:.2em}
+  #loading .bar{width:180px; height:2px; background:#1a1d21}
+  #loading .bar i{display:block; height:100%; width:0%; background:var(--orange)}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="ast">&#10035;</span>
+    <span class="name">flytokens</span>
+    <span class="tag">NEURAL OBSERVATORY</span>
+  </div>
+  <div class="conn">
+    <span><span class="dot">&#9679;</span>Connected</span>
+    <span class="chip">CUDA:0</span>
+  </div>
+</header>
+<main>
+  <section id="left">
+    <div class="kicker">01 / LANGUAGE</div>
+    <h1>A little brain.<br>A stream of words.</h1>
+    <p class="sub">Watch the next token become a thought in the network.</p>
+    <label class="f" for="prompt">Starting text</label>
+    <textarea id="prompt" spellcheck="false">Once upon a time</textarea>
+    <div class="rowline">
+      <span class="lab">Playback speed</span>
+      <div class="tokbox"><input id="speedNum" type="number" min="1" max="40" value="8"><span>tok/s</span></div>
+    </div>
+    <input id="speed" type="range" min="1" max="40" value="8">
+    <div class="caprow"><span>Slow observation</span><span>Fast stream</span></div>
+    <details id="sampling">
+      <summary>Sampling settings</summary>
+      <div class="sampling">
+        <div class="srow">
+          <div class="rowline"><span class="lab">Temperature</span>
+            <div class="tokbox"><input id="tempNum" type="number" min="0.1" max="1.6" step="0.05" value="0.8"></div></div>
+          <input id="temp" type="range" min="0.1" max="1.6" step="0.05" value="0.8">
+        </div>
+        <div class="srow">
+          <div class="rowline"><span class="lab">Top-k</span>
+            <div class="tokbox"><input id="topkNum" type="number" min="1" max="100" value="20"></div></div>
+          <input id="topk" type="range" min="1" max="100" value="20">
+        </div>
+        <div class="srow">
+          <div class="rowline"><span class="lab">Max tokens</span>
+            <div class="tokbox"><input id="maxNum" type="number" min="10" max="1000" value="300"></div></div>
+          <input id="maxt" type="range" min="10" max="1000" value="300">
+        </div>
+      </div>
+    </details>
+    <div class="btnrow">
+      <button id="startBtn"><span>Start generating</span><span class="arr">&#8599;</span></button>
+      <button id="pauseBtn" class="darkbtn">Pause</button>
+      <button id="stopBtn" class="darkbtn" title="Stop">&#9632;</button>
+    </div>
+    <div class="outhead"><span class="lab">LIVE OUTPUT</span><span id="status">Stopped</span></div>
+    <div id="output"><span style="color:var(--faint)">The stream will appear here.</span></div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="nTok">0</div><div class="l">tokens generated</div></div>
+      <div class="stat"><div class="n" id="rate">0.0</div><div class="l">actual tok/s</div></div>
+    </div>
+    <div class="probwrap">
+      <span class="lab" style="font-size:10px; letter-spacing:.24em; color:var(--faint); font-weight:600">NEXT TOKEN PROBABILITIES</span>
+      <div id="chips"></div>
+    </div>
+  </section>
+  <section id="right">
+    <div class="rhead">
+      <div>
+        <div class="kicker">02 / NEURAL ACTIVITY</div>
+        <h2>The fly, from the inside.</h2>
+      </div>
+      <div id="tokflag"><span class="dot">&#9679;</span>TOKEN <span id="tokFlagN">0</span></div>
+    </div>
+    <div class="rtools">
+      <div class="seg">
+        <button id="segBrain" class="on">Brain</button>
+        <button id="segCNS">Full CNS</button>
+      </div>
+      <div class="rbtns">
+        <button id="resetView">Reset view</button>
+        <button id="rotBtn" class="on">Auto-rotate</button>
+      </div>
+    </div>
+    <div id="stage">
+      <div id="scene"></div>
+      <div class="stagefoot">
+        <span>DRAG TO ROTATE &nbsp;&middot;&nbsp; SCROLL TO ZOOM &nbsp;&middot;&nbsp; CLICK A NEURON</span>
+        <span>ANATOMICAL COORDINATES / &mu;m</span>
+      </div>
+      <div id="loading"><div class="t">UNPACKING THE CONNECTOME</div><div class="bar"><i id="loadbar"></i></div></div>
+    </div>
+    <div class="rfoot">
+      <div class="scalebar"><span>-1</span><span class="bar"></span><span>+1</span><span class="nm">Signed activation</span></div>
+      <div id="coord">X &mdash; &nbsp; Y &mdash; &nbsp; Z &mdash;</div>
+      <div class="bright"><span>Brightness</span><input id="bright" type="range" min="0.3" max="2.2" step="0.05" value="1"></div>
+    </div>
+  </section>
+</main>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const $ = id => document.getElementById(id);
+const setLoad = p => { $('loadbar').style.width = (p*100).toFixed(0)+'%'; };
+
+// ---------- decode embedded connectome (FlyWire FAFB v783, 65k-neuron core) ----------
+setLoad(.06);
+const raw = (await Promise.all([1,2,3,4].map(i=>fetch('connectome.p'+i+'.txt').then(r=>r.text()).then(t=>t.trim())))).join('');
+const parts = raw.split('|');
+const b64 = s => { const b = atob(s); const u = new Uint8Array(b.length); for (let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; };
+const NB = 65000, E = 220000;
+const positions = new Float32Array(b64(parts[0]).buffer);
+const attrs = b64(parts[1]);
+const Epre = new Uint16Array(b64(parts[2]).buffer);
+const Epost = new Uint16Array(b64(parts[3]).buffer);
+const Ew8 = new Int8Array(b64(parts[4]).buffer);
+
+setLoad(.18);
+const outStart = new Uint32Array(NB+1);
+for (let e=0;e<E;e++) outStart[Epre[e]+1]++;
+for (let i=0;i<NB;i++) outStart[i+1]+=outStart[i];
+const csrPost = new Uint32Array(E), csrW = new Float32Array(E);
+{
+  const cur = outStart.slice(0,NB);
+  for (let e=0;e<E;e++){ const p=Epre[e], o=cur[p]++; csrPost[o]=Epost[e]; csrW[o]=Ew8[e]/320; }
+  for (let i=0;i<NB;i++){
+    const deg = outStart[i+1]-outStart[i], f = 1/(1+deg*0.06);
+    for (let o=outStart[i];o<outStart[i+1];o++) csrW[o]*=f;
+  }
+}
+
+// spatial hash grid for token -> neuron-cluster stimulation
+setLoad(.30);
+const CELL = 16, grid = new Map();
+const gk = (x,y,z)=>((Math.round(x)+512)>>4)+','+((Math.round(y)+512)>>4)+','+((Math.round(z)+512)>>4);
+for (let i=0;i<NB;i++){
+  const k = gk(positions[3*i], positions[3*i+1], positions[3*i+2]);
+  let a = grid.get(k); if(!a){a=[];grid.set(k,a);} a.push(i);
+}
+function nearestCluster(cx,cy,cz,K){
+  const out=[];
+  for(let r=1;r<=4 && out.length<K;r++){
+    const R=r*CELL;
+    for(let x=cx-R;x<=cx+R;x+=CELL)for(let y=cy-R;y<=cy+R;y+=CELL)for(let z=cz-R;z<=cz+R;z+=CELL){
+      const a=grid.get(gk(x,y,z)); if(a) for(const i of a) out.push(i);
+    }
+  }
+  out.sort((i,j)=>{
+    const di=(positions[3*i]-cx)**2+(positions[3*i+1]-cy)**2+(positions[3*i+2]-cz)**2;
+    const dj=(positions[3*j]-cx)**2+(positions[3*j+1]-cy)**2+(positions[3*j+2]-cz)**2;
+    return di-dj;
+  });
+  return out.slice(0,K);
+}
+const ANCHORS = new Uint32Array(4000);
+for (let i=0;i<4000;i++) ANCHORS[i]=(Math.random()*NB)|0;
+const CLASS_NAMES=['OPTIC','CENTRAL','SENSORY','VISUAL PROJ','ASCENDING','DESCENDING','SENSORY ASC','VIS CENTRIF','MOTOR','ENDOCRINE'];
+const NT_NAMES=['ACH','GLU','GABA','SER','DOP','OCT'];
+
+// ---------- language model: trigram over a TinyStories slice ----------
+setLoad(.42);
+const words = (await fetch('corpus.txt').then(r=>r.text())).trim().split(/\s+/);
+const tri=new Map(), bi=new Map(), uni=new Map();
+const bump=(m,k,w)=>{let s=m.get(k); if(!s){s=new Map();m.set(k,s);} s.set(w,(s.get(w)||0)+1);};
+{
+  let a='<s>', b='<s>';
+  for (const w of words){
+    if (w==='<|end|>'){ a='<s>'; b='<s>'; continue; }
+    bump(tri,a+' '+b,w); bump(bi,b,w); bump(uni,'',w);
+    a=b; b=w;
+  }
+}
+function nextDist(a,b,temp,topk){
+  let s = tri.get(a+' '+b);
+  if (!s || s.size<2){ const f = bi.get(b); if (f) s = f; }
+  if (!s) s = uni.get('');
+  let arr=[...s.entries()];
+  const invT=1/Math.max(.05,temp);
+  arr=arr.map(([w,c])=>[w,Math.pow(c,invT)]);
+  arr.sort((x,y)=>y[1]-x[1]);
+  arr=arr.slice(0,Math.max(1,topk));
+  let Z=0; for(const e of arr) Z+=e[1];
+  for(const e of arr) e[1]/=Z;
+  return arr;
+}
+function sampleDist(arr){
+  let r=Math.random();
+  for(const e of arr){ if((r-=e[1])<=0) return e[0]; }
+  return arr[arr.length-1][0];
+}
+
+// ---------- three.js scene ----------
+setLoad(.55);
+const stage = $('stage'), sceneEl = $('scene');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050608);
+scene.fog = new THREE.FogExp2(0x050608, 0.0009);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 6000);
+const CAM_HOME = new THREE.Vector3(0, 4, 300), TGT_HOME = new THREE.Vector3(0, 2, 0);
+const CAM_CNS  = new THREE.Vector3(0, -70, 520), TGT_CNS  = new THREE.Vector3(0, -115, 0);
+camera.position.copy(CAM_HOME);
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+sceneEl.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = .06;
+controls.autoRotate = true; controls.autoRotateSpeed = .5;
+controls.minDistance = 60; controls.maxDistance = 1600;
+function fitStage(){
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+fitStage(); addEventListener('resize', fitStage);
+
+// procedural ventral nerve cord for Full CNS mode
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rng = mulberry32(7);
+const VN = 13000;
+const vpos = new Float32Array(VN*3);
+{
+  let i = 0;
+  const gang = 9;
+  for (let g=0; g<gang; g++){
+    const t = g/(gang-1);
+    const gy = -72 - t*185;
+    const rx = 24*(1-t*.55), ry = 13, rz = 17*(1-t*.5);
+    const n = Math.floor(VN*0.82/gang);
+    for (let k=0;k<n && i<VN;k++,i++){
+      const th = rng()*Math.PI*2, ph = Math.acos(2*rng()-1), rr = Math.cbrt(rng());
+      vpos[3*i]   = Math.sin(ph)*Math.cos(th)*rr*rx;
+      vpos[3*i+1] = gy + Math.sin(ph)*Math.sin(th)*rr*ry;
+      vpos[3*i+2] = Math.cos(ph)*rr*rz;
+    }
+    if (g<gang-1){
+      const m = Math.floor(VN*0.18/(gang-1));
+      const y2 = -72 - (g+1)/(gang-1)*185;
+      for (let k=0;k<m && i<VN;k++,i++){
+        const t2 = rng();
+        vpos[3*i]   = (rng()-0.5)*7;
+        vpos[3*i+1] = gy + (y2-gy)*t2;
+        vpos[3*i+2] = (rng()-0.5)*6;
+      }
+    }
+  }
+  while (i<VN){ vpos[3*i]=(rng()-.5)*6; vpos[3*i+1]=-260-rng()*22; vpos[3*i+2]=(rng()-.5)*5; i++; }
+}
+const N = NB + VN;
+const allPos = new Float32Array(N*3);
+allPos.set(positions, 0); allPos.set(vpos, NB*3);
+
+const act = new Float32Array(N), nxt = new Float32Array(N);
+const aActB = new Float32Array(NB), aActV = new Float32Array(VN);
+const VERT = `
+  attribute float aAct; varying float vAct;
+  uniform float uSize, uPR;
+  void main(){
+    vAct = aAct;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    float s = uSize * (1.0 + min(abs(aAct),2.2)*1.5) * (250.0 / -mv.z) * uPR;
+    gl_PointSize = clamp(s, 0.0, 26.0*uPR);
+    gl_Position = projectionMatrix * mv;
+  }`;
+const FRAG = `
+  varying float vAct; uniform float uBright;
+  void main(){
+    vec2 c = gl_PointCoord - 0.5;
+    float d = length(c);
+    float a = smoothstep(0.5, 0.10, d);
+    float g = clamp(abs(vAct), 0.0, 1.25);
+    vec3 base = vec3(0.62, 0.66, 0.72) * 0.40 * uBright;
+    vec3 hot = vAct >= 0.0 ? vec3(1.0, 0.60, 0.20) : vec3(0.28, 0.62, 1.0);
+    vec3 col = base + hot * g * 1.2 * uBright + vec3(1.0) * g*g * 0.18;
+    float alpha = a * (0.24 + 0.66*min(1.0, g + 0.08));
+    gl_FragColor = vec4(col, alpha);
+  }`;
+function makePoints(posArr, actArr, size){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  const aa = new THREE.BufferAttribute(actArr, 1);
+  aa.setUsage(THREE.DynamicDrawUsage);
+  g.setAttribute('aAct', aa);
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uSize:{value:size}, uBright:{value:1.0}, uPR:{value:Math.min(devicePixelRatio,2)} },
+    vertexShader: VERT, fragmentShader: FRAG,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+  });
+  const p = new THREE.Points(g, m);
+  p.userData.attr = aa; p.userData.mat = m;
+  scene.add(p);
+  return p;
+}
+const brainPts = makePoints(positions, aActB, 2.3);
+const vncPts = makePoints(vpos, aActV, 2.0);
+vncPts.visible = false;
+const pmat = brainPts.userData.mat; // brightness slider target (brain); vnc synced below
+
+// ---------- neural simulation ----------
+const LEAK = 0.90, THRESH = 1.0;
+let cnsPulse = -72, cnsDir = -1, cnsTimer = 0;
+function simStep(){
+  nxt.fill(0);
+  for (let k=0;k<38;k++) nxt[(Math.random()*N)|0] += 0.05;
+  // idle wander: a soft roaming blob keeps the brain gently lit
+  if (Math.random() < 0.012){
+    const a = ANCHORS[(Math.random()*4000)|0];
+    const cl = nearestCluster(positions[3*a], positions[3*a+1], positions[3*a+2], 70);
+    for (const i of cl) nxt[i] += 0.22 + Math.random()*0.2;
+  }
+  // cord pulse travels down the VNC in Full CNS mode
+  if (vncOn){
+    cnsTimer--;
+    if (cnsTimer<=0){ cnsPulse = -72; cnsTimer = 260; }
+    cnsPulse += cnsDir * 0.9;
+    for (let k=0;k<26;k++){
+      const i = NB + ((Math.random()*VN)|0);
+      if (Math.abs(allPos[3*i+1] - cnsPulse) < 12) nxt[i] += 0.5;
+    }
+  }
+  for (let i=0;i<N;i++){
+    let v = act[i]*LEAK + nxt[i];
+    if (v >= THRESH){
+      v = -0.25;
+      if (i < NB) aActB[i] = 1.5; else aActV[i-NB] = 1.5;
+      if (i < NB) for (let o=outStart[i];o<outStart[i+1];o++) nxt[csrPost[o]] += csrW[o];
+    }
+    act[i] = v;
+    const dst = i < NB ? aActB : aActV, di = i < NB ? i : i-NB;
+    dst[di] = Math.max(dst[di]*0.80, Math.min(1.5, Math.abs(v))*Math.sign(v||1)*0.9);
+    if (Math.abs(dst[di]) < 0.02) dst[di] = 0;
+  }
+  brainPts.userData.attr.needsUpdate = true;
+  if (vncOn) vncPts.userData.attr.needsUpdate = true;
+}
+function hashStr(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function stimulateToken(tok){
+  const h = hashStr(tok.toLowerCase());
+  const a = ANCHORS[h % 4000];
+  const K = 42 + (h % 26);
+  const cl = nearestCluster(positions[3*a], positions[3*a+1], positions[3*a+2], K);
+  const amp = 0.30 + (h % 30)/100;
+  for (const i of cl) act[i] += amp * (0.4 + 0.6*Math.random());
+  for (let k=0;k<60;k++) act[(Math.random()*NB)|0] += 0.035;
+}
+
+// ---------- generation engine ----------
+let generating=false, paused=false, tokCount=0;
+let ctxA='<s>', ctxB='<s>', acc=0, lastT=performance.now();
+let rateWin=[];
+const outEl=$('output');
+let outText='';
+const cleanJoin = (t,w)=>{
+  if (!t) return w;
+  if (/^[.,!?;:%)\]"']/.test(w)) return t + w;
+  if (/[(\["]$/.test(t) || t.endsWith('\u201C')) return t + w;
+  return t + ' ' + w;
+};
+function setStatus(s){
+  const el=$('status'); el.textContent=s;
+  el.className = s==='Generating' ? 'gen' : (s==='Paused' ? 'pause' : '');
+}
+function pushChips(dist){
+  const c=$('chips'); c.innerHTML='';
+  for (const [w,p] of dist.slice(0,5)){
+    const d=document.createElement('span'); d.className='pchip';
+    const t=document.createElement('span'); t.className='t'; t.textContent='_'+w;
+    const q=document.createElement('span'); q.className='p'; q.textContent=(p*100).toFixed(1)+'%';
+    d.appendChild(t); d.appendChild(q); c.appendChild(d);
+  }
+}
+const cursorHTML='<span class="cursor"></span>';
+function renderOut(){
+  if (!outText && !generating){
+    outEl.innerHTML = '<span style="color:var(--faint)">The stream will appear here.</span>';
+    return;
+  }
+  const esc = outText.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  outEl.innerHTML = esc + (generating && !paused ? cursorHTML : '');
+  outEl.scrollTop = outEl.scrollHeight;
+}
+function genToken(){
+  const temp=parseFloat($('temp').value), topk=parseInt($('topk').value);
+  const dist = nextDist(ctxA, ctxB, temp, topk);
+  pushChips(dist);
+  const w = sampleDist(dist);
+  if (w==='<|end|>'){
+    outText += '\n\n'; ctxA='<s>'; ctxB='<s>';
+  } else {
+    outText = cleanJoin(outText, w);
+    ctxA=ctxB; ctxB=w;
+    stimulateToken(w);
+  }
+  tokCount++;
+  rateWin.push(performance.now());
+  $('nTok').textContent = tokCount;
+  $('tokFlagN').textContent = tokCount;
+  renderOut();
+  if (tokCount >= parseInt($('maxt').value)) stopGen(false);
+}
+function startGen(){
+  outText=''; tokCount=0; rateWin=[];
+  ctxA='<s>'; ctxB='<s>'; acc=0;
+  const seed=$('prompt').value.trim();
+  if (seed){
+    outText=seed;
+    const sw=seed.split(/\s+/);
+    ctxB=sw[sw.length-1]||'<s>'; ctxA=sw[sw.length-2]||'<s>';
+    for (const w of sw.slice(-4)) stimulateToken(w);
+    outText += ' ';
+    outText = outText.replace(/\s+$/,'');
+  }
+  generating=true; paused=false;
+  setStatus('Generating');
+  $('startBtn').disabled=true;
+  $('pauseBtn').classList.remove('active');
+  renderOut();
+}
+function stopGen(clear){
+  generating=false; paused=false;
+  setStatus('Stopped');
+  $('startBtn').disabled=false;
+  $('pauseBtn').classList.remove('active');
+  if (clear){ outText=''; tokCount=0; rateWin=[];
+    $('nTok').textContent='0'; $('tokFlagN').textContent='0'; $('chips').innerHTML=''; }
+  renderOut();
+}
+$('startBtn').addEventListener('click', startGen);
+$('stopBtn').addEventListener('click', ()=>stopGen(true));
+$('pauseBtn').addEventListener('click', ()=>{
+  if (!generating) return;
+  paused=!paused;
+  $('pauseBtn').classList.toggle('active', paused);
+  setStatus(paused?'Paused':'Generating');
+  renderOut();
+});
+
+// ---------- controls / ui wiring ----------
+function bindRange(rId, nId, fn){
+  const r=$(rId), n=nId?$(nId):null;
+  const upd=()=>{ if(n) n.value=r.value;
+    r.style.setProperty('--p', ((r.value-r.min)/(r.max-r.min)*100)+'%'); if(fn) fn(); };
+  r.addEventListener('input', upd);
+  if (n) n.addEventListener('input', ()=>{ r.value=n.value; upd(); });
+  upd();
+}
+bindRange('speed','speedNum');
+bindRange('temp','tempNum');
+bindRange('topk','topkNum');
+bindRange('maxt','maxNum');
+bindRange('bright',null,()=>{ const b=parseFloat($('bright').value); brainPts.userData.mat.uniforms.uBright.value=b; vncPts.userData.mat.uniforms.uBright.value=b; });
+
+let vncOn=false;
+function flyCam(to, tgt, dur){
+  const p0=camera.position.clone(), t0=controls.target.clone(), s=performance.now();
+  (function step(){
+    const k=Math.min(1,(performance.now()-s)/dur), e=1-Math.pow(1-k,3);
+    camera.position.lerpVectors(p0,to,e); controls.target.lerpVectors(t0,tgt,e);
+    if (k<1) requestAnimationFrame(step);
+  })();
+}
+$('segBrain').addEventListener('click',()=>{
+  vncOn=false; vncPts.visible=false; $('segBrain').classList.add('on'); $('segCNS').classList.remove('on');
+  flyCam(CAM_HOME, TGT_HOME, 900);
+});
+$('segCNS').addEventListener('click',()=>{
+  vncOn=true; vncPts.visible=true; $('segCNS').classList.add('on'); $('segBrain').classList.remove('on');
+  flyCam(CAM_CNS, TGT_CNS, 900);
+});
+$('resetView').addEventListener('click',()=>flyCam(vncOn?CAM_CNS:CAM_HOME, vncOn?TGT_CNS:TGT_HOME, 700));
+$('rotBtn').addEventListener('click',()=>{
+  controls.autoRotate=!controls.autoRotate;
+  $('rotBtn').classList.toggle('on', controls.autoRotate);
+});
+
+// click a neuron -> anatomical coordinates
+const ray=new THREE.Raycaster(), ptr=new THREE.Vector2();
+let downPos=null;
+renderer.domElement.addEventListener('pointerdown', e=>downPos=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup', e=>{
+  if (!downPos) return;
+  const moved=Math.hypot(e.clientX-downPos[0], e.clientY-downPos[1]); downPos=null;
+  if (moved>6) return;
+  const r=renderer.domElement.getBoundingClientRect();
+  ptr.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ptr, camera);
+  const ro=ray.ray.origin, rd=ray.ray.direction;
+  let best=-1, bestD=3.5;
+  for (let i=0;i<N;i++){
+    const dx=allPos[3*i]-ro.x, dy=allPos[3*i+1]-ro.y, dz=allPos[3*i+2]-ro.z;
+    const t=dx*rd.x+dy*rd.y+dz*rd.z; if(t<0) continue;
+    const px=ro.x+rd.x*t-allPos[3*i], py=ro.y+rd.y*t-allPos[3*i+1], pz=ro.z+rd.z*t-allPos[3*i+2];
+    const d=Math.sqrt(px*px+py*py+pz*pz);
+    if (d<bestD){ bestD=d; best=i; }
+  }
+  if (best<0) return;
+  act[best]+=1.2;
+  const f=v=>(v*2.1).toFixed(1);
+  const meta = best<NB
+    ? ' &middot; NEURON '+best+' &middot; '+CLASS_NAMES[attrs[3*best]]+' &middot; '+NT_NAMES[attrs[3*best+1]]
+    : ' &middot; VNC INTERNEURON';
+  $('coord').innerHTML='X '+f(allPos[3*best])+' &nbsp;Y '+f(allPos[3*best+1])+' &nbsp;Z '+f(allPos[3*best+2])+' &mu;m'+meta;
+});
+
+// ---------- main loop ----------
+setLoad(.8);
+function frame(){
+  requestAnimationFrame(frame);
+  const now=performance.now(), dt=(now-lastT)/1000; lastT=now;
+  if (generating && !paused){
+    acc += dt * parseFloat($('speed').value);
+    let guard=0;
+    while (acc>=1 && guard++<64 && generating){ acc-=1; genToken(); }
+    if (acc>=1) acc=0;
+  }
+  const cut=now-3000;
+  while (rateWin.length && rateWin[0]<cut) rateWin.shift();
+  $('rate').textContent=(rateWin.length/3).toFixed(1);
+  simStep();
+  controls.update();
+  renderer.render(scene, camera);
+}
+setLoad(1);
+setTimeout(()=>{ $('loading').style.display='none'; }, 350);
+frame();
+if (location.search.indexOf('autostart')>=0) setTimeout(startGen, 600);
+if (location.search.indexOf('cns')>=0) setTimeout(()=>$('segCNS').click(), 400);
+</script>
+</body>
+</html>
